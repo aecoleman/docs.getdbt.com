@@ -25,7 +25,49 @@ is_featured: true
 **Why this matters:** Anyone asking questions about dbt—whether you're building models, exploring data, or understanding lineage—now gets answers grounded in your actual dbt setup AND official, up-to-date docs.
 
 ---
-<!-- truncate -->
+
+## Behind the Decision: Why MCP + Docs, Not a Separate API?
+
+[2-3 paragraphs explaining the research and decision-making process]
+
+### The Research Phase
+We started by asking: *Where do dbt users actually look for answers?* 
+
+Through research on docs context patterns (analyzing where users go, what they search for, how they consume information), we discovered that dbt users are already using AI assistants (Claude, ChatGPT, etc.) to get help. The problem wasn't *finding* an answer—it was that AI assistants were often guessing or using outdated training data instead of checking docs.getdbt.com in real time.
+
+We also looked at how other platforms solve this. Google's approach with their Docs API was particularly inspiring—they recognized that having a massive docs corpus is only valuable if AI assistants can access it in real time. Rather than building yet another API endpoint, they integrated docs fetching into the tools developers already use.
+
+### Why MCP Over a Custom API
+We had two paths:
+1. **Build a separate dbt Docs API** — Powerful, but adds another integration point teams have to manage
+2. **Add docs fetch to the existing dbt MCP server** — Leverage what's already there, no new infrastructure to maintain
+
+We chose option 2 because:
+- **Existing adoption:** Teams already using the dbt MCP server get this for free; no new tool to learn
+- **Scalability:** MCP is becoming the standard for AI-tool integration; our work feeds into a broader ecosystem
+- **Simplicity:** Fewer APIs to manage means fewer things to break, update, and document
+- **User choice:** Whether you're using dbt agent skills, Claude, or another tool—if it supports MCP, it works
+
+Plus, honestly? Google's docs API works because it's part of a unified ecosystem. Our dbt MCP server is becoming that for the dbt community.
+
+---
+
+## How We Validated the Decision (And What We Learned)
+
+[1-2 paragraphs about the research and testing process, including dbt Platform usage]
+
+To validate this approach, we dug into the data. Using dbt Platform's internal analytics and the Insights feature, we tracked:
+- **docs.getdbt.com page views over time** — Spoiler: they're decreasing
+- **Why they're decreasing** — Users are increasingly consuming docs through AI assistants instead of browsing directly
+- **dbt MCP server usage patterns** — How often teams query it, what they're asking, where it's being used
+
+The insight? Users are already voting with their behavior. They prefer getting answers *in context* (via AI + MCP) over manually navigating to docs. Page view decline isn't a problem—it's validation that we're solving the right problem.
+
+**Fun fact:** As a technical writer, I used dbt Platform's Insights feature to analyze this data myself. Building queries to understand how users interact with docs is pretty meta—and it's exactly why tools like dbt matter. You can turn raw usage patterns into actionable intelligence. It's the same value proposition we're enabling for you with the MCP server + docs fetch combo: get the answers you need, where you're already working.
+
+Testing against dbt Platform, dbt Cloud, and dbt Core confirmed the approach works across deployment models. The feature felt natural—like it should have always been there.
+
+---
 
 ## The Problem: Documentation Drift Across Your Team
 
@@ -87,7 +129,7 @@ is_featured: true
 
 #### Before
 ```
-1. Reviewing a dbt project in dbt Cloud / dbt Platform
+1. Reviewing a dbt project in dbt platform / dbt Cloud
 2. "What does this model actually do? Is it production-ready?"
 3. Click to docs or read YAML comments (if they exist)
 4. Still unclear; search docs.getdbt.com manually
@@ -127,14 +169,14 @@ is_featured: true
 
 ### Testing Across Setups
 [2-3 paragraphs]
-- We validated this during development using dbt Platform accounts, dbt Cloud, and dbt Core
+- We validated this during development using dbt platform accounts, dbt Cloud, and dbt Core
 - Real benefit: Testing against different deployment models and the dbt Fusion Engine showed where docs fetch shines—when teams are actively building and exploring together
-- Mention: dbt Platform's intelligent project parsing and Fusion Engine integration made testing faster and validated the feature works in modern, complex dbt setups
+- Mention: dbt platform's intelligent project parsing and Fusion Engine integration made testing faster and validated the feature works in modern, complex dbt setups
 
 ### Ensuring Broad Compatibility
 [1 paragraph]
 - Also validated with dbt Core and traditional deployments to ensure the feature works for the full breadth of dbt users
-- Whether you're on dbt Cloud, running dbt Core locally, or using dbt Platform, this feature is built for you
+- Whether you're on dbt Cloud, running dbt Core locally, or using dbt platform, this feature is built for you
 
 ---
 
@@ -208,7 +250,7 @@ model downstream [list], and here's how to fix it [guide]..."
 - ✅ Get authoritative answers without manual searches
 - ✅ Reduce decision paralysis (docs are the source of truth, not memory or guesses)
 - ✅ Iterate faster on models, tests, and analysis
-- ✅ Works across dbt Cloud, dbt Platform, dbt Core, and hybrid setups
+- ✅ Works across dbt Cloud, dbt platform, dbt Core, and hybrid setups
 - ✅ Works whether you're local or querying a remote dbt project
 - ✅ Entire team gets consistent, accurate information
 
