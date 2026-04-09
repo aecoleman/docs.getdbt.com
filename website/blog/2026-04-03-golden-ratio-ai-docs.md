@@ -1,7 +1,7 @@
 ---
-title: "Golden ratio: AI + Docs = harmonious flow state"
-description: "Learn about the golden ratio of AI + Docs = harmonious flow state."
-slug: golden-ratio-ai-docs
+title: "From browser to prompt"
+description: "A dbt docs writer on why human-curated docs matters more than ever in this AI era and how we brought docs.getdbt.com into your AI workflow."
+slug: from-browser-to-prompt
 authors: [mirna_wong]
 tags: [ai, docs]
 hide_table_of_contents: false
@@ -9,293 +9,96 @@ date: 2026-04-03
 is_featured: true
 ---
 
-## Hook / Opening
-[2-3 sentences establishing the friction: anyone working with dbt (developers, analysts, managers) context-switching between their tools and the browser, breaking flow state, losing momentum]
+For most of my career as a technical writer, success looked like page views. Someone searches for a dbt concept, lands on docs.getdbt.com, reads the page. Job done.
 
-"We've just shipped docs.getdbt.com fetch capability to the dbt MCP server—and it changes how *anyone* working with dbt gets answers."
+So when I started seeing that traffic decline, my first instinct was to worry. My second instinct was to go find out why. What I found reframed how I think about docs entirely — and led directly to what we just shipped.
 
----
+Earlier this year I found myself pulling together a research doc to answer a simple question: where do dbt users actually go when they need help? I used dbt platform to build out the analysis—querying MCP server telemetry, looking at tool event volume, comparing it against docs traffic patterns. What I found reframed how I think about docs entirely.
 
-## What's the MCP Server? (Quick primer)
-[1-2 paragraphs explaining MCP servers at a high level—no deep technical weeds]
-- What it is (Model Context Protocol, enables AI assistants to interact with tools and data)
-- Why dbt has one (lets Claude and other AI assistants understand your dbt projects in real time—locally or remotely)
-- Who uses it (developers, analysts, teams querying shared dbt projects through AI assistants)
+Direct doc visits to docs.getdbt.com are declining. Meanwhile, the dbt MCP server—which lets AI assistants work directly with your dbt environment—had 355,198 tool events in just the first two months of 2026. That's more than all of 2025 combined (337,236). Users aren't ignoring the docs. They're getting answers a different way.
 
-**Why this matters:** Anyone asking questions about dbt—whether you're building models, exploring data, or understanding lineage—now gets answers grounded in your actual dbt setup AND official, up-to-date docs.
+That research led directly to what we just shipped: product docs fetch capability in the dbt MCP server. Here's how we got there.
 
----
+<!-- truncate -->
 
-## Behind the Decision: Why MCP + Docs, Not a Separate API?
+## What's the dbt MCP server?
 
-[2-3 paragraphs explaining the research and decision-making process]
+MCP stands for Model Context Protocol—an open standard (now backed by Anthropic, OpenAI, Google, and Microsoft) that lets AI assistants connect to external tools and data sources. Instead of an AI approximating an answer from training data, it can reach out, pull real information, and respond with actual context.
 
-### The Research Phase
-We started by asking: *Where do dbt users actually look for answers?* 
+The dbt MCP server connects AI assistants to your dbt environment. Ask Claude about a model's lineage, a failing test, or what a macro does—and it can look it up in your real project. You can run it locally (in VS Code, your terminal) or connect it remotely to query a shared team project via dbt Platform.
 
-Through research on docs context patterns (analyzing where users go, what they search for, how they consume information), we discovered that dbt users are already using AI assistants (Claude, ChatGPT, etc.) to get help. The problem wasn't *finding* an answer—it was that AI assistants were often guessing or using outdated training data instead of checking docs.getdbt.com in real time.
+Before this release, the dbt MCP server had eight toolset categories: CLI, Semantic Layer, Discovery, Admin API, SQL, Codegen, Fusion, Server Metadata. Not one of them could access docs.getdbt.com. When an agent needed to answer "how do I configure incremental models?"—it was on its own.
 
-We also looked at how other platforms solve this. Google's approach with their Docs API was particularly inspiring—they recognized that having a massive docs corpus is only valuable if AI assistants can access it in real time. Rather than building yet another API endpoint, they integrated docs fetching into the tools developers already use.
+## The research phase: what the data showed
 
-### Why MCP Over a Custom API
-We had two paths:
-1. **Build a separate dbt Docs API** — Powerful, but adds another integration point teams have to manage
-2. **Add docs fetch to the existing dbt MCP server** — Leverage what's already there, no new infrastructure to maintain
+I queried our MCP server telemetry in dbt Platform and the numbers told a clear story about how fast this is growing:
 
-We chose option 2 because:
-- **Existing adoption:** Teams already using the dbt MCP server get this for free; no new tool to learn
-- **Scalability:** MCP is becoming the standard for AI-tool integration; our work feeds into a broader ecosystem
-- **Simplicity:** Fewer APIs to manage means fewer things to break, update, and document
-- **User choice:** Whether you're using dbt agent skills, Claude, or another tool—if it supports MCP, it works
+| | 2025 (full year) | 2026 (Jan–Feb only) |
+|---|---|---|
+| Total tool events | 337,236 | 355,198 |
+| Local MCP | 118,278 | 208,418 |
+| Remote MCP | 101,477 | 136,444 |
 
-Plus, honestly? Google's docs API works because it's part of a unified ecosystem. Our dbt MCP server is becoming that for the dbt community.
+Local MCP usage nearly doubled in two months. Remote MCP grew 34%. And across it all—**2,353 unique accounts and 1,319 users** connected and actively using the server.
 
----
+That last number mattered a lot to the decision we were about to make.
 
-## How We Validated the Decision (And What We Learned)
+## The decision: why MCP, and why this MCP
 
-[1-2 paragraphs about the research and testing process, including dbt Platform usage]
+We already had some pieces in place for AI-readable docs:
 
-To validate this approach, we dug into the data. Using dbt Platform's internal analytics and the Insights feature, we tracked:
-- **docs.getdbt.com page views over time** — Spoiler: they're decreasing
-- **Why they're decreasing** — Users are increasingly consuming docs through AI assistants instead of browsing directly
-- **dbt MCP server usage patterns** — How often teams query it, what they're asking, where it's being used
+- `docs.getdbt.com/llms.txt` — a page index for AI systems
+- `docs.getdbt.com/llms-full.txt` — full docs content in one file
+- `.md` suffix support on any docs page for clean markdown output
+- A published `fetching-dbt-docs` skill that teaches AI agents how to access our docs via web requests
 
-The insight? Users are already voting with their behavior. They prefer getting answers *in context* (via AI + MCP) over manually navigating to docs. Page view decline isn't a problem—it's validation that we're solving the right problem.
+The skill approach worked, but it had a friction problem: the agent needed to know the skill existed, install it, and perform web fetches as a workaround. About 56 installs per week—not bad, but a fraction of the MCP server's reach.
 
-**Fun fact:** As a technical writer, I used dbt Platform's Insights feature to analyze this data myself. Building queries to understand how users interact with docs is pretty meta—and it's exactly why tools like dbt matter. You can turn raw usage patterns into actionable intelligence. It's the same value proposition we're enabling for you with the MCP server + docs fetch combo: get the answers you need, where you're already working.
+Adding docs tools directly to the MCP server means existing users get the capability automatically, with no action required on their part. 2,353 accounts versus 56 weekly installs is not a close comparison.
 
-Testing against dbt Platform, dbt Cloud, and dbt Core confirmed the approach works across deployment models. The feature felt natural—like it should have always been there.
+We also considered whether to build a separate, standalone docs MCP server—something like what OpenAI and Microsoft have done with their documentation. But their situation is different: massive, sprawling doc surfaces across dozens of unrelated products. For a single coherent product like dbt, adding docs as a ninth toolset category in the existing server made far more sense. One server to maintain. No new infrastructure. And docs available in the same context as project work, right when someone is mid-workflow and needs an answer.
 
----
+Google's move to expose their docs via API was an early signal that the industry was heading this direction. By the time we were making this call, OpenAI, Microsoft, GitBook, and Mintlify had all made similar investments. MCP is becoming the standard for AI-tool integration across the board, and our work fits into that ecosystem naturally.
 
-## The Problem: Documentation Drift Across Your Team
+## Why human-curated docs matter more now, not less
 
-[2-3 paragraphs]
-- **Developers:** Writing a macro, wondering about Jinja syntax or dbt-specific functions
-- **Analysts:** Exploring a model, asking "What does this do?" or "Is it safe to use?"
-- **Managers:** Reviewing data lineage, needing quick answers about model dependencies
-- **The shared friction:** Leaving their current context (editor, notebook, Slack, AI chat) to search docs.getdbt.com
-- **The risk:** Outdated answers, incomplete context, or relying on guesses instead of the source of truth
-- **The cost:** Broken flow state, slower iteration, decisions made on incomplete information
+I want to be honest about something that surprised me in my own research: the fact that AI assistants are displacing direct doc visits isn't a problem. It's actually validation.
 
----
+But it does raise the stakes.
 
-## The Solution: Docs Fetch in the MCP Server
+When an AI assistant answers a dbt question from its training data, you get an approximation—maybe accurate, maybe slightly outdated, maybe confidently wrong about a feature that changed six months ago. When it fetches directly from docs.getdbt.com, you get the current, canonical answer. The one a human wrote, reviewed, and maintained.
 
-[2-3 paragraphs explaining what was added and why it matters]
+As the docs team at dbt Labs, our content is open source—anyone can contribute, and the accuracy of what's on docs.getdbt.com reflects the collective care of our team and community. In an AI-assisted world, that work doesn't matter less. It gets amplified. Every gap in the docs becomes a gap in AI answers at scale. Every inaccuracy propagates further than it ever could when someone had to navigate to a page themselves.
 
-### What we added
-- The dbt MCP server can now fetch and serve relevant documentation from docs.getdbt.com on demand
-- When you ask Claude (or another AI assistant using the dbt MCP server) a question about dbt, it can pull the authoritative docs in real time
-- Works whether you're using the MCP server **locally** (in VS Code, your terminal, your IDE) or **remotely** (querying a shared dbt project across your team)
+AI without good docs is guessing at best, hallucinating at worst. Good docs without AI access is friction. But together, they're actually better than either alone &mdash; and that's the shift this blog post is pointing at. It used to be: open a browser, find the page, read it, go back to work. Now it's: ask a question, get the answer, keep going. Same docs. Different path.
 
-### Why this is powerful
-- **Accuracy:** Docs are always up-to-date; AI isn't guessing from stale training data
-- **Completeness:** Get the full context from official docs, not a paraphrase
-- **Speed:** No manual searches; the AI does the lookup and synthesizes the answer for your specific question
-- **Confidence:** You know the answer comes from the source of truth, not hallucination
-- **Team alignment:** Whether you're local or remote, everyone gets the same authoritative answers
+## What we shipped
 
----
+We added two tools to the dbt MCP server under a new "Product Docs" category:
 
-## Real-World Scenarios: Before & After
+- **`search_product_docs`** — searches docs.getdbt.com and returns titles, URLs, and relevance-ranked descriptions for pages matching your query.
+- **`get_product_doc_pages`** — fetches the full markdown content of one or more docs pages by path or URL.
 
-### Scenario 1: Developer Writing a Macro (Local Use)
+The workflow mirrors how a human would use the docs: search first to find what's relevant, then fetch the full content. The difference is it happens inside whatever AI tool you're already using, without a context switch.
 
-#### Before
-```
-1. Writing dbt macro in VS Code
-2. "Wait, what's the exact syntax for dbt_utils.generate_series?"
-3. Alt-tab to browser
-4. Search docs.getdbt.com
-5. Read docs
-6. Back to editor
-7. Resume macro (context lost, momentum broken)
-```
+Because these tools hit public URLs, they work without a dbt Cloud account. That means every dbt user—open source or Platform—gets docs access through MCP for free.
 
-#### After
-```
-1. Writing dbt macro in VS Code
-2. Ask Claude directly in VS Code extension
-3. Claude fetches docs.getdbt.com and responds with exact syntax + examples
-4. Keep coding
-5. No context switch, flow state intact
-```
+## What this changes
+
+The practical difference is staying in flow. Before: write a macro, hit an unfamiliar function, alt-tab to a browser, find the docs page, read it, return to your editor, try to remember where you were. After: ask Claude directly, get an answer grounded in actual, current documentation, keep coding.
+
+For analysts exploring a shared project, it means understanding what a model does without navigating to a separate tab. For teams working across different dbt setups—dbt Cloud, dbt Core, dbt Platform—it means consistent, authoritative answers regardless of where they're working or who's asking.
+
+For the docs team, it means the work we put into writing and maintaining docs.getdbt.com is now doing more than it was before.
+
+## Try it
+
+If you're already connected to the dbt MCP server, the product docs tools are available now. See the [MCP available tools reference](https://docs.getdbt.com/docs/dbt-ai/mcp-available-tools?version=2.0#product-docs) for details on `search_product_docs` and `get_product_doc_pages`.
+
+If you're new to the MCP server, the [setup guide](https://docs.getdbt.com/docs/dbt-ai/mcp-available-tools) walks through both local and remote configuration.
+
+And if you have thoughts on how it's working—or what you wish it could do—I'd genuinely like to hear them. This whole thing started from paying attention to how people actually use dbt. That feedback loop is how we figure out what to build next.
 
 ---
 
-### Scenario 2: Analyst Exploring Data (Remote Use)
-
-#### Before
-```
-1. Reviewing a dbt project in dbt platform / dbt Cloud
-2. "What does this model actually do? Is it production-ready?"
-3. Click to docs or read YAML comments (if they exist)
-4. Still unclear; search docs.getdbt.com manually
-5. Come back and make a decision based on incomplete info
-```
-
-#### After
-```
-1. In Claude (or your AI chat), ask about the model
-2. AI queries the remote dbt MCP server for context + docs
-3. Gets a clear explanation of what the model does, dependencies, and usage
-4. Make informed decisions without leaving your conversation
-```
-
----
-
-### Scenario 3: Manager Reviewing Lineage (Team Use)
-
-#### Before
-```
-1. "Why did this test fail? What models depend on it?"
-2. Navigate dbt UI, follow lineage manually
-3. Ask team member or search Slack history
-4. Piece together context from multiple sources
-```
-
-#### After
-```
-1. Ask Claude about the failing test
-2. AI pulls context from dbt MCP server + docs
-3. Get a complete picture: what failed, why, what depends on it, next steps
-```
-
----
-
-## How We Tested It: dbt Platform, dbt Cloud & dbt Core
-
-### Testing Across Setups
-[2-3 paragraphs]
-- We validated this during development using dbt platform accounts, dbt Cloud, and dbt Core
-- Real benefit: Testing against different deployment models and the dbt Fusion Engine showed where docs fetch shines—when teams are actively building and exploring together
-- Mention: dbt platform's intelligent project parsing and Fusion Engine integration made testing faster and validated the feature works in modern, complex dbt setups
-
-### Ensuring Broad Compatibility
-[1 paragraph]
-- Also validated with dbt Core and traditional deployments to ensure the feature works for the full breadth of dbt users
-- Whether you're on dbt Cloud, running dbt Core locally, or using dbt platform, this feature is built for you
-
----
-
-## Who Benefits? (Use Cases by Persona)
-
-[Bulleted overview, can expand into sections if needed]
-
-**Analytics Engineers & Developers:**
-- Write models, tests, and macros faster without manual doc searches
-- Get accurate syntax help and best practices in real time
-
-**Data Analysts:**
-- Understand what models do and how they're built without diving into code
-- Explore lineage and dependencies conversationally
-- Make safer decisions about which data to use
-
-**Analytics Managers:**
-- Answer team questions about data lineage and model ownership
-- Troubleshoot issues faster with AI-assisted context
-- Understand your dbt project's structure without being a dbt expert
-
-**Data Governance Teams:**
-- Verify documentation accuracy and completeness
-- Ensure lineage is correct and well-understood
-- Answer compliance questions about data origins and transformations
-
----
-
-## Practical Examples
-
-### Example 1: Developer Debugging a Test Failure
-
-```
-Developer: "Why is my test_not_null failing on the orders model?"
-
-Claude (with docs fetch): "The test_not_null macro checks that a column 
-has no null values. Looking at your dbt project, the 'orders' model's 
-'order_id' column is failing. This typically means either:
-1. Your upstream source has nulls
-2. Your dbt seed/source definition allows nulls
-See ref() semantics here [docs link] and check your source definition..."
-```
-
-### Example 2: Analyst Exploring an Unfamiliar Model
-
-```
-Analyst: "What does the fact_sales model do? Can I use it for my report?"
-
-Claude (with docs fetch): "The fact_sales model is a fact table that 
-combines order, customer, and product data at the daily level. It's 
-marked as mature and used by 5 downstream models. Here's what it includes..."
-```
-
-### Example 3: Manager Triaging a Data Issue
-
-```
-Manager: "This dbt job failed last night. What broke?"
-
-Claude (with docs fetch): "Looking at your dbt project and the error logs, 
-the stg_customers model failed during ref() resolution. This means the 
-upstream source it depends on is unavailable. Here's what depends on this 
-model downstream [list], and here's how to fix it [guide]..."
-```
-
----
-
-## What This Means for Your Workflow
-
-[Bulleted summary of benefits]
-- ✅ Stay in your current context (editor, chat, notebook) longer
-- ✅ Get authoritative answers without manual searches
-- ✅ Reduce decision paralysis (docs are the source of truth, not memory or guesses)
-- ✅ Iterate faster on models, tests, and analysis
-- ✅ Works across dbt Cloud, dbt platform, dbt Core, and hybrid setups
-- ✅ Works whether you're local or querying a remote dbt project
-- ✅ Entire team gets consistent, accurate information
-
----
-
-## How to Get Started
-
-[Short CTA with different paths for different users]
-
-**Local Users (Developers & Individual Contributors):**
-- Install the dbt VS Code extension (or use Claude with dbt MCP server configured locally)
-- Ask Claude a dbt question—it will now pull live docs for you
-
-**Remote Users (Teams & Analysts):**
-- Use Claude to query your team's dbt project (via the remote dbt MCP server)
-- Ask about models, tests, lineage, or dbt concepts
-- Docs will be pulled automatically for context
-
-**All Users:**
-- Try it on a real project and see how it changes your workflow
-- Share feedback: [link to feedback/discussion channel]
-
----
-
-## Looking Ahead
-
-[1-2 paragraphs on future vision]
-- This is the beginning of better AI-assisted analytics engineering across your team
-- Docs fetch is the foundation; we're exploring what else the MCP server can do to support developers, analysts, and teams
-- Feedback welcome: How are you using the dbt MCP server? What else would help you stay in flow?
-
----
-
-## Closing
-
-[2-3 sentences bringing it back to the bigger picture]
-- dbt is about enabling analytics engineers, developers, and analysts to build and understand better, faster
-- Removing friction in the development and exploration loop is core to that mission
-- Docs fetch in the MCP server is one more step toward that goal—for everyone using dbt
-
----
-
-## Metadata / Blog Details
-- **Audience:** dbt developers, analysts, analytics engineers, teams using dbt (any deployment model)
-- **Tone:** Technical but approachable; practical and action-focused; inclusive of multiple personas
-- **Length estimate:** 2000–2500 words (medium-length blog post)
-- **Call-to-action:** Try it + share feedback (with different entry points for different users)
-- **SEO keywords:** dbt docs, MCP server, dbt Cloud, dbt Platform, Claude, AI-assisted development, analytics, remote dbt, collaborative dbt
+*Mirna Wong is a technical writer at dbt Labs. dbt's documentation is open source—contributions and issues are always welcome at [github.com/dbt-labs/docs.getdbt.com](https://github.com/dbt-labs/docs.getdbt.com).*
