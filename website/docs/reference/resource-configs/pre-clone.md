@@ -17,6 +17,11 @@ models:
   [<resource-path>](/reference/resource-configs/resource-path):
     [+](/reference/resource-configs/plus-prefix)state:
       pre_clone: never | if_missing | always
+
+snapshots:
+  [<resource-path>](/reference/resource-configs/resource-path):
+    [+](/reference/resource-configs/plus-prefix)state:
+      pre_clone: never | if_missing | always
 ```
 
 </File>
